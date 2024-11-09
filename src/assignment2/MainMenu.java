@@ -176,12 +176,19 @@ public class MainMenu extends javax.swing.JFrame {
         //</editor-fold>
 
         /* Create and display the form */
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                new MainMenu().setVisible(true);
-            }
-        });
+        showMainMenu();
     }
+
+    public static void showMainMenu() {
+    java.awt.EventQueue.invokeLater(new Runnable() {
+        public void run() {
+//            MainMenu mainMenu = new MainMenu();
+//            mainMenu.setVisible(true);
+            GameBoard gameBoard = new GameBoard(3);
+            gameBoard.setVisible(true);
+        }
+    });
+}
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel ChooseBoard;

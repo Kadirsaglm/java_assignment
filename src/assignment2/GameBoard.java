@@ -3,12 +3,16 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
  */
 package assignment2;
+
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.*;
 import javax.swing.*;
+import javax.swing.Timer;
 import java.awt.*;
+import java.util.List;
 
 /**
- *
  * @author kseni
  */
 public class GameBoard extends javax.swing.JFrame {
@@ -20,30 +24,39 @@ public class GameBoard extends javax.swing.JFrame {
     private Map<Integer, JButton> board;
     private JPanel bPanel;
     private JPanel gamePanel;
-    
-    private JLabel player1L;
-    private JLabel player2L;
+
+    private JLabel player1L = new JLabel("Player 1");
+    private JLabel player2L = new JLabel("Player 2");
 
     private Player player1;
     private Player player2;
-    
+    private Player currentPlayer;
+    private List<FieldButton> fieldButtonList = new ArrayList<>();
+    private Timer idleTimer;
+    private final int IDLE_TIME = 5 * 60 * 1000;
+
+
     public GameBoard(int size) {
         this.size = size;
         board = new HashMap<>();
-        player1 = new Player("PLAYER 1");
-        player2 = new Player("PLAYER 2");        
+        player1 = new Player("PLAYER 1", Color.BLUE);
+        player2 = new Player("PLAYER 2", Color.RED);
+        currentPlayer = player1;
+
         setTitle("Game board : " + size + " x " + size);
-        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);        setLocationRelativeTo(null);
-        setSize(700,700);
+        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setSize(700, 700);
         setVisible(true);
         setLocationRelativeTo(null);
-        
+
         //initComponents();
         createBoard();
+        startIdleTimer();
         //pack();
     }
 
-    
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -58,49 +71,133 @@ public class GameBoard extends javax.swing.JFrame {
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 400, Short.MAX_VALUE)
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGap(0, 400, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 300, Short.MAX_VALUE)
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGap(0, 300, Short.MAX_VALUE)
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    public void createBoard(){
-        
+    public void createBoard() {
+
         gamePanel = new JPanel();
         gamePanel.setLayout(new BorderLayout());
-        
+
         bPanel = new JPanel();
         bPanel.setLayout(new GridLayout(size, size));
-        
-        player1L = new JLabel(player1.getName());
-        //player1L.setForeground(Color.BLUE);
-        
-        player2L = new JLabel(player2.getName());
-        //player2L.setForeground(Color.RED);
-        
-        //int points = 0;
-//        bPanel.setSize(200, 500);
-        for (int i = 0; i < size; i++){
-            for (int j = 0; j<size; j++){
-                JButton field = new JButton ("0");
-                field.setFont(new Font("Arial",Font.PLAIN, 15));
-                //field.setSize(100, 100);
-                field.setBackground(Color.GREEN);
+
+        updatePlayerLabels();
+
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
+                int position = i * size + j;
+                FieldButton field = new FieldButton(position, this);
                 bPanel.add(field);
-                int position = i*size+j;
                 board.put(position, field);
+                fieldButtonList.add(field);
             }
         }
         gamePanel.add(player1L, BorderLayout.WEST);
         gamePanel.add(bPanel, BorderLayout.CENTER);
         gamePanel.add(player2L, BorderLayout.EAST);
         add(gamePanel);
+        updatePlayerLabels();
     }
+
+    public Player getCurrentPlayer() {
+        return currentPlayer;
+    }
+
+    public void switchPlayer() {
+        currentPlayer.calculatePoints(fieldButtonList);
+        if (checkIfGameEnds()) {
+            updatePlayerLabels();
+            displayWinner();
+        } else {
+            currentPlayer = (currentPlayer == player1) ? player2 : player1;
+            updatePlayerLabels();
+
+        }
+    }
+
+    public int getBoardSize() {
+        return size;
+    }
+
+    public Map<Integer, JButton> getBoard() {
+        return board;
+    }
+
+    private void updatePlayerLabels() {
+        player1L.setText(player1.getName() + " (" + player1.getPoints() + ")");
+        player2L.setText(player2.getName() + " (" + player2.getPoints() + ")");
+        if (currentPlayer == player1) {
+            player1L.setForeground(Color.BLUE);
+            player2L.setForeground(Color.BLACK);
+        } else {
+            player1L.setForeground(Color.BLACK);
+            player2L.setForeground(Color.RED);
+        }
+    }
+
+    public boolean checkIfGameEnds() {
+        for (FieldButton button : fieldButtonList) {
+            if (button.getCurrentValue() != 4) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public void displayWinner() {
+        String message;
+        if (player1.getPoints() > player2.getPoints()) {
+            message = player1.getName() + " wins!";
+        } else if (player1.getPoints() < player2.getPoints()) {
+            message = player2.getName() + " wins!";
+        } else {
+            message = "It's a tie!";
+        }
+        JOptionPane.showMessageDialog(this, message);
+        resetGame();
+    }
+
+    public void resetGame() {
+        for (FieldButton button : fieldButtonList) {
+            button.reset();
+        }
+
+        player1.resetPoints();
+        player2.resetPoints();
+
+        currentPlayer = player1;
+
+        dispose();
+        idleTimer.stop();
+
+        MainMenu.showMainMenu();
+    }
+
+    private void startIdleTimer() {
+        idleTimer = new Timer(IDLE_TIME, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                JOptionPane.showMessageDialog(GameBoard.this, "Game has been idle for more than 5 minutes. Exiting...");
+                System.exit(0);
+            }
+        });
+        idleTimer.setRepeats(false);
+        idleTimer.start();
+    }
+
+    public void restartIdleTimer() {
+        idleTimer.restart();
+    }
+
     /**
      * @param args the command line arguments
      */
@@ -108,7 +205,7 @@ public class GameBoard extends javax.swing.JFrame {
         /* Set the Nimbus look and feel */
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
         /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html
          */
         try {
             for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
@@ -132,7 +229,8 @@ public class GameBoard extends javax.swing.JFrame {
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
                 //new GameBoard().setVisible(true);
-                
+                GameBoard gameBoard = new GameBoard(5);
+                gameBoard.setVisible(true);
             }
         });
     }
